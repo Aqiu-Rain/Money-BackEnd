@@ -11,5 +11,5 @@ t.daemon = True
 t.start()
 
 # 在PyWebview应用程序中加载FastAPI应用程序的URL
-webview.create_window('Money', 'http://127.0.0.1:8000', fullscreen=False, width=1080, height=720)
+webview.create_window('Money', 'http://127.0.0.1:8000', min_size=(1400, 800))
 webview.start()
