@@ -50,7 +50,7 @@ def register_middlewares(app: FastAPI, sett: Settings):
 def init_setting():
     base_settings = {
         'port': '',
-        'baudrate': 9600,
+        'baudrate': 384000,
         'bytesize': 8,
         'parity': 'N',
         'stopbits': 1,

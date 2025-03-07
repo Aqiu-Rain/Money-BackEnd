@@ -21,6 +21,8 @@ from app.utils.common import convert_to_datetime
 
 # 定义全局变量
 message_queue = Queue()
+# 定义常量
+MSG_LENGTH = 1650
 
 # 定义串口控制器类
 class SerialController:
@@ -38,6 +40,10 @@ class SerialController:
         self.image_opt = ImageSaverService()
         self.database = None
         self.data_source = data_source # real代表数据是真实数据，test代表数据是从文件中读取的测试数据
+        # 初始化数据
+        self.msg_length = 0
+        self.message = {}
+        self.money_info = None
 
     # 设置串口参数
     def set_serial_param(self, serial_param: dict):
@@ -52,12 +58,8 @@ class SerialController:
 
     # 打开串口
     def open_connection(self) -> bool:
-        ret = True
         if not self.serial_communication.is_connected():
-            ret = self.serial_communication.open_connection()
-            if ret:
-                logger.info("connect successfully!")
-        return ret
+            return self.serial_communication.open_connection()
         
     # 关闭串口
     def close_connection(self):
@@ -66,107 +68,100 @@ class SerialController:
         
     # 数据接收及入库
     def recv_and_save_data(self):
-        while True:
-            if self.data_source == 'test':
-                data = read_serial_data_from_file("tests/test_data/Log1.TXT")
-            elif self.data_source == 'real':
-                data = self.serial_communication.receive_data(1656)
-            else:
-                raise ValueError(f"Invalid data source: {self.data_source}")
-            
-            if not data:
-                continue
-            
-            # 数据解析
-            parsed = self.parse_data(bytes(data))
-            if not parsed:
-                continue
-            
-            # 测试
-            # img_data= add_bmp_headers(parsed.image_sno.sno)
-            # save_to_file(img_data)
-
-            # 构造消息
-            message = {
-                "type": "serial_data",
-                "data": {
-                    'date': f"{parsed.parsed_date}",
-                    'time': f"{parsed.parsed_time}",
-                    "tf_flag": f"{parsed.tf_flag}",
-                    'valuta': f"{parsed.valuta}",
-                    "fsn_count": f"{parsed.fsn_count}",
-                    'money_flag': parsed.currency_code,
-                    "ver": f"{parsed.ver}",
-                    "undefine": f"{parsed.undefine}",
-                    "char_num": f"{parsed.char_num}",
-                    "sno": ''.join(chr(c) for c in parsed.sno),
-                    "machine_number": ''.join(chr(c) for c in parsed.machine_sno),
-                    "reserve1": f"{parsed.reserve1}",
-                    'image_data': self.image_opt.bmp_to_jpeg(add_bmp_headers(parsed.image_sno.sno)),
-                    'currency_name': parsed.parsed_currency,
-                }
-            }
-            
-            # 将数据保存为图片
-            # self.image_opt.save_base64_image(message['image_data'])
-            
-            # 存入队列
-            message_queue.put(message)
-            
-            # 数据入库（需要数据库实现）
-            item_data = Result(
-                date = message['data']['date'],
-                time = message['data']['time'],
-                tf_flag = message['data']["tf_flag"],
-                valuta = message['data']['valuta'],
-                fsn_count = message['data']["fsn_count"],
-                money_flag = message['data']['money_flag'],
-                ver = message['data']["ver"],
-                undefine = message['data']["undefine"],
-                char_num = message['data']["char_num"],
-                sno = message['data']["sno"],
-                machine_number = message['data']["machine_number"],
-                reserve1 = message['data']["reserve1"],
-                image_data = message['data']['image_data'],
-                currency_name = message['data']['currency_name'],
-                calc_time = convert_to_datetime(message['data']['date'], message['data']['time'])
-            )
-            self.db.add(item_data)
-            self.db.commit()
-            self.db.close()
-
-    # 解析数据
-    def parse_data(self, data: bytes) -> BanknoteInfo:
         try:
-            # 解析起始标志（4字节0XAE）
-            start_flag = struct.unpack('4B', data[:4])
-            if any(b != 0xAE for b in start_flag):
-                return None
+            while True:
+                # 接收数据
+                if not self.recv_data():
+                    logger.warning(f"recv data failed: data is not correct")
+                    continue
+
+                # 推送数据
+                if not self.push_data():
+                    logger.warning(f"push data failed: data is not correct")
+                    continue
+
+                # 数据入库
+                if not self.save_data():
+                    logger.warning(f"save data failed: data is not correct")
+                    logger.warning(f"data is {self.message}")
+                    continue
+        except Exception as e:
+            msg = f"recv data failed: {str(e)}"
+            logger.error(msg)
+            self.push_error(msg, "error")
+            self.close_connection()
+            return
+
+    # 接收数据
+    def recv_data(self) -> bool:
+        # 接受包头
+        while not self.recv_header():
+            pass
+
+        # 接受数据长度
+        if not self.recv_data_length():
+            logger.warning("recv data length failed: data length is not correct")
+            return False
+
+        # 接收核心数据（包含模式+纸币信息+包尾）
+        if not self.recv_money_data():
+            logger.warning("recv core data failed: core data is not correct")
+            return False
+
+        return True
+
             
-            # 解析消息长度（2字节）
-            msg_length = struct.unpack('<H', data[4:6])[0]
-            
+    # 接收包头
+    def recv_header(self) -> bool:
+        data = self.serial_communication.receive_data(4)
+        if data is None:
+            return False
+        
+        if data == b'\xAE\xAE\xAE\xAE':
+            return True
+        else:
+            msg = f"recv header failed: header is not correct {data}"
+            logger.warning(msg)
+            self.push_error(msg)
+            self.serial_communication.clean_data()
+            return False
+
+    # 接收数据长度
+    def recv_data_length(self) -> bool:
+        data = self.serial_communication.receive_data(2)
+        if data is None:
+            return False
+
+        # 解析消息长度（2字节）
+        self.msg_length = struct.unpack('<H', data)[0]
+        if self.msg_length == MSG_LENGTH:
+            return True
+        else:
+            msg = f"recv data length failed: data length is not correct {self.msg_length}"
+            logger.warning(msg)
+            self.push_error(msg)
+            return False
+
+    # 接收纸币数据
+    def recv_money_data(self) -> bool:
+        try:
+            data = self.serial_communication.receive_data(self.msg_length)
+            if data is None:
+                return False
+
             # 解析模式标志（2字节0X0001）
-            mode_flag = struct.unpack('<H', data[6:8])[0]
+            mode_flag = struct.unpack('<H', data[:2])[0]
             if mode_flag != 0x0001:
-                return None
-            
+                msg = f"recv mode flag failed: mode flag is not correct {mode_flag}"
+                logger.warning(msg)
+                self.push_error(msg)
+                return False
+
             # 解析纸币信息（1644字节）
-            note_data = data[8:-4]
-            if len(note_data) != 1644:
-                return None
-            
-            # 解析结束标志（4字节0XBE）
-            end_flag = struct.unpack('4B', data[-4:])
-            if any(b != 0xBE for b in end_flag):
-                return None
-            
-            # 修正后的格式字符串
+            money_data = data[2:-4]
             fmt = '<HHHIH4HHHH12H24HH4H1536s'  # 总长度=2+2+2+4+2+8+2+2+2+24+48+2+8+1536=1644
-            
-            fields = struct.unpack(fmt, note_data)
-            
-            return BanknoteInfo(
+            fields = struct.unpack(fmt, money_data)
+            self.money_info = BanknoteInfo(
                 date=fields[0],
                 time=fields[1],
                 tf_flag=fields[2],
@@ -184,7 +179,100 @@ class SerialController:
                     sno=fields[53]
                 )
             )
-            
+
+            # 解析结束标志（4字节0XBE）
+            end_flag = data[-4:]
+            if end_flag != b'\xBE\xBE\xBE\xBE':
+                msg = f"recv end flag failed: end flag is not correct {end_flag}"
+                logger.warning(msg)
+                self.push_error(msg)
+                return False
         except struct.error as e:
-            logger.error(f"parse data failed: {str(e)}")
-            return None
+            msg = f"parse money data failed: {str(e)}"
+            logger.error(msg)
+            self.push_error(msg)
+            return False
+
+        return True
+
+
+    # 推送数据
+    def push_data(self) -> bool:
+        # 构造消息
+        self.message = {
+            "type": "serial_data",
+            "data": {
+                'date': f"{self.money_info.parsed_date}",
+                'time': f"{self.money_info.parsed_time}",
+                "tf_flag": f"{self.money_info.tf_flag}",
+                'valuta': f"{self.money_info.valuta}",
+                "fsn_count": f"{self.money_info.fsn_count}",
+                'money_flag': self.money_info.currency_code,
+                "ver": f"{self.money_info.ver}",
+                "undefine": f"{self.money_info.undefine}",
+                "char_num": f"{self.money_info.char_num}",
+                "sno": ''.join(chr(c) for c in self.money_info.sno),
+                "machine_number": ''.join(chr(c) for c in self.money_info.machine_sno),
+                "reserve1": f"{self.money_info.reserve1}",
+                'image_data': self.image_opt.bmp_to_jpeg(add_bmp_headers(self.money_info.image_sno.sno)),
+                'currency_name': self.money_info.parsed_currency,
+            }
+        }
+
+        # 将数据保存为图片
+        # self.image_opt.save_base64_image(self.message['image_data'])
+
+        # 存入队列
+        try:
+            message_queue.put(self.message)
+        except Exception as e:
+            msg = f"push data failed: {str(e)}"
+            logger.error(msg)
+            self.push_error(msg)
+            return False
+        return True
+
+
+    # 数据入库
+    def save_data(self) -> bool:
+        try:
+            # 数据入库（需要数据库实现）
+            item_data = Result(
+                date = self.message['data']['date'],
+                time = self.message['data']['time'],
+                tf_flag = self.message['data']["tf_flag"],
+                valuta = self.message['data']['valuta'],
+                fsn_count = self.message['data']["fsn_count"],
+                money_flag = self.message['data']['money_flag'],
+                ver = self.message['data']["ver"],
+                undefine = self.message['data']["undefine"],
+                char_num = self.message['data']["char_num"],
+                sno = self.message['data']["sno"],
+                machine_number = self.message['data']["machine_number"],
+                reserve1 = self.message['data']["reserve1"],
+                image_data = self.message['data']['image_data'],
+                currency_name = self.message['data']['currency_name'],
+                calc_time = convert_to_datetime(self.message['data']['date'], self.message['data']['time'])
+            )
+            self.db.add(item_data)
+            self.db.commit()
+            self.db.close()
+        except Exception as e:
+            error_msg = f"save data failed: {str(e)}"
+            logger.error(error_msg)
+            self.push_error(error_msg)
+            return False
+        return True
+
+    # 推送错误提示信息
+    def push_error(self, msg: str, type: str = "notification"):
+        message = {
+            "type": type,
+            "data": msg
+        }
+        try:
+            message_queue.put(message)
+        except Exception as e:
+            logger.error(f"push error failed: {str(e)}")
+            return False
+        return True

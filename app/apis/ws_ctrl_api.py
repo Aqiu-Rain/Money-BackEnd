@@ -48,10 +48,13 @@ async def send_serial_data(websocket: WebSocket):
             await asyncio.sleep(0.1)
     except WebSocketDisconnect as e:
         logger.info("websocket has disconnected!")
+        return
     except WebSocketException as e:
         logger.info("websocket exception")
+        return
     except RuntimeError as e:
         logger.error(f"run time error: {str(e)}")
+        return
 
 # 定义task：处理前端请求
 async def handle_client_request(websocket: WebSocket, db: Session):
@@ -78,43 +81,50 @@ async def handle_client_request(websocket: WebSocket, db: Session):
             # 处理前端start请求
             if cmd["cmd"] == "start":
                 serial_ctrl.set_serial_param(cmd["param"])
-                serial_ctrl.open_connection()
+                if not serial_ctrl.open_connection():
+                    message = {
+                        "type": "error",
+                        "data": "serial connect failed"
+                    }
+                    logger.warning(message)
+                    await websocket.send_json(message)
+                    continue
+                
                 recv_thread = threading.Thread(target=serial_ctrl.recv_and_save_data, daemon=True)
                 recv_thread.start()
-                message = json.dumps({
-                    "type": "cmd_response",
-                    "data": {
-                        "message": "start successfully",
-                        "detail": ""
-                    }
-                })
+                message = {
+                    "type": "notification",
+                    "data": "serial connect successfully"
+                }
                 logger.info(message)
+                await websocket.send_json(message)
                 
             # 处理前端stop请求
             elif cmd["cmd"] == "stop":
                 serial_ctrl.close_connection()
-                message = json.dumps({
-                    "type": "cmd_response",
-                    "data": {
-                        "message": "start successfully",
-                        "detail": ""
-                    }
-                })
+                message = {
+                    "type": "notification",
+                    "data": "serial close successfully"
+                }
                 logger.info(message)
+                await websocket.send_json(message)
             # 异常处理
             else:
-                message = json.dumps({
-                    "type": "cmd_response",
-                    "data": {
-                        "message": "start successfully",
-                        "detail": ""
-                    }
-                })
+                message = {
+                    "type": "error",
+                    "data": "unknown command"
+                }
                 logger.warning(message)
-            await websocket.send_json(message)
+                await websocket.send_json(message)
     except WebSocketDisconnect as e:
         logger.info("websocket has disconnected!")
+        serial_ctrl.close_connection()
+        return
     except WebSocketException as e:
         logger.info("websocket exception")
+        serial_ctrl.close_connection()
+        return
     except RuntimeError as e:
+        serial_ctrl.close_connection()
         logger.error(f"run time error: {str(e)}")
+        return
