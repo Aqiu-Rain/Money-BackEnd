@@ -5,6 +5,9 @@ import struct
 from dataclasses import asdict
 import os
 import sys
+import re
+from datetime import datetime
+
 # 导入第三方库
 from multiprocessing import Queue
 from sqlalchemy.orm import Session
@@ -198,6 +201,9 @@ class SerialController:
 
     # 推送数据
     def push_data(self) -> bool:
+        # 只保留字母和数字，其余字符用空格代替
+        sno_temp = ''.join(chr(c) for c in self.money_info.sno)
+        sno_temp = re.sub(r'[^a-zA-Z0-9]', ' ', sno_temp)
         # 构造消息
         self.message = {
             "type": "serial_data",
@@ -211,11 +217,12 @@ class SerialController:
                 "ver": f"{self.money_info.ver}",
                 "undefine": f"{self.money_info.undefine}",
                 "char_num": f"{self.money_info.char_num}",
-                "sno": ''.join(chr(c) for c in self.money_info.sno),
+                "sno": sno_temp,
                 "machine_number": ''.join(chr(c) for c in self.money_info.machine_sno),
                 "reserve1": f"{self.money_info.reserve1}",
                 'image_data': self.image_opt.bmp_to_jpeg(add_bmp_headers(self.money_info.image_sno.sno)),
                 'currency_name': self.money_info.parsed_currency,
+                'create_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
         }
 
@@ -252,7 +259,6 @@ class SerialController:
                 reserve1 = self.message['data']["reserve1"],
                 image_data = self.message['data']['image_data'],
                 currency_name = self.message['data']['currency_name'],
-                calc_time = convert_to_datetime(self.message['data']['date'], self.message['data']['time'])
             )
             self.db.add(item_data)
             self.db.commit()

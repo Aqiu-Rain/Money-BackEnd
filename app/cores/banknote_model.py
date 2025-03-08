@@ -31,7 +31,7 @@ class BanknoteInfo:
     ver: UInt16                   # 版本号（位置28-29）
     undefine: UInt16              # 未定义字段（位置30-31）
     char_num: UInt16              # 冠字号码字符数（位置32-33）
-    sno: list[UInt16]            # 冠字号码[12]（位置34-57）
+    sno: list[UInt16]             # 冠字号码[12]（位置34-57）
     machine_sno: list[UInt16]     # 机具编号[24]（位置58-105）
     reserve1: UInt16              # 保留字（位置106-107）
     image_sno: TImageSNo          # 图像数据（位置108-1643）

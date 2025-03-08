@@ -1,4 +1,5 @@
 from datetime import datetime
+from loguru import logger
 
 from sqlalchemy import func, and_
 from sqlalchemy.orm import Session
@@ -40,8 +41,11 @@ def searchMoney(data: SearchSchema, db: Session):
 
         return {"data": items, "total": len(items)}
     else:
-        start_date = datetime.fromisoformat(data.date_range[0])
-        end_date = datetime.fromisoformat(data.date_range[1])
+        logger.debug(data.date_range)
+        start_date = datetime.strptime(data.date_range[0], '%Y-%m-%d %H:%M:%S')
+        end_date = datetime.strptime(data.date_range[1], '%Y-%m-%d %H:%M:%S')
+        logger.debug(start_date)
+        logger.debug(end_date)
 
         items = db.query(Result).filter(
             and_(Result.sno.like(f'%{data.q}%'), Result.create_at.between(start_date, end_date))
@@ -49,7 +53,7 @@ def searchMoney(data: SearchSchema, db: Session):
 
         end_time = time.time()
 
-        print(f'cost: {int(end_time) - int(start_time)}')
+        logger.debug(f'cost: {int(end_time) - int(start_time)}')
 
         return {"data": items, "total": len(items)}
 
