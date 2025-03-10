@@ -218,7 +218,7 @@ class SerialController:
                 "undefine": f"{self.money_info.undefine}",
                 "char_num": f"{self.money_info.char_num}",
                 "sno": sno_temp,
-                "machine_number": ''.join(chr(c) for c in self.money_info.machine_sno),
+                "machine_number": ''.join(chr(c) for c in self.money_info.machine_number),
                 "reserve1": f"{self.money_info.reserve1}",
                 'image_data': self.image_opt.bmp_to_jpeg(add_bmp_headers(self.money_info.image_sno.sno)),
                 'currency_name': self.money_info.parsed_currency,
