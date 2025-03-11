@@ -32,7 +32,7 @@ def create_app() -> FastAPI:
 
 
 def register_logger(sett: Settings):
-    logger.add(sink=sett.LOGGING.LOG_NAME)
+    logger.add(sink=sett.LOGGING.LOG_NAME, rotation="500 MB", level="DEBUG")
 
 def register_router(app: FastAPI, sett: Settings):
     from app.apis.ws_ctrl_api import router as router_ws
