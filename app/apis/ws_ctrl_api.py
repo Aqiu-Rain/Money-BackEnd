@@ -39,13 +39,15 @@ async def send_serial_data(websocket: WebSocket):
     try:
         while True:
             if not message_queue.empty():
+                # 打印队列长度
+                logger.info(f"queue length: {message_queue.qsize()}")
                 # 获取数据 TODO:message中的图片数据要转换为base64数据格式
                 message = message_queue.get()
                 # 推送给前端
                 await websocket.send_json(message)
                 logger.info(f"send serial data to front: {message}")
                 # 等待0.1秒
-            await asyncio.sleep(0.1)
+            # await asyncio.sleep(0.1)
     except WebSocketDisconnect as e:
         logger.info("websocket has disconnected!")
         return
@@ -107,6 +109,14 @@ async def handle_client_request(websocket: WebSocket, db: Session):
                     "data": "serial close successfully"
                 }
                 logger.info(message)
+                await websocket.send_json(message)
+            # 处理心跳
+            elif cmd["cmd"] == "heart":
+                logger.info(cmd)
+                message = {
+                    "type": "heart",
+                    "data": "pong"
+                }
                 await websocket.send_json(message)
             # 异常处理
             else:

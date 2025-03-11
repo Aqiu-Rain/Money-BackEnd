@@ -175,7 +175,7 @@ class SerialController:
                 undefine=fields[10],
                 char_num=fields[11],
                 sno=list(fields[12:24]),
-                machine_sno=list(fields[24:48]),
+                machine_number=list(fields[24:48]),
                 reserve1=fields[48],  # 调整索引
                 image_sno=TImageSNo(
                     undefine=list(fields[49:53]),

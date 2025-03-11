@@ -101,10 +101,8 @@ class SerialCommunication:
                 
         except serial.SerialException as e:
             logger.error(f"Read error: {str(e)}")
-            raise
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
-            raise
             
 
     def clean_data(self) -> bytes:
