@@ -37,6 +37,7 @@ class Settings:
         DIAGNOSE: bool = True
         TRACEBACK: bool = True
         LOG_NAME: str = os.path.join(DATA_STORE_DIR, 'money.log')
+        RETENTION: int = 5
 
     class DATA_SOURCE:
         REAL_OR_TEST: str = 'real' # real代表数据是真实数据，test代表数据是从文件中读取的测试数据
