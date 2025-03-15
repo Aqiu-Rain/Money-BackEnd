@@ -19,7 +19,7 @@ class WebSocketManager:
             await self.disconnect()
         await websocket.accept()
         self.active_connection = websocket
-        logger.info(f"websocket connected: {websocket}")
+        logger.info(f"connect websocket sucessfully : {websocket}")
 
     # 移除连接
     async def disconnect(self):
@@ -27,9 +27,9 @@ class WebSocketManager:
             if self.active_connection:
                 await self.active_connection.close()
                 self.active_connection = None
-                logger.info(f"websocket disconnected: {self.active_connection}")
+                logger.info(f"disconnect websocket successfully: {self.active_connection}")
         except RuntimeError as e:
-            logger.error(f"run time error: {str(e)}")
+            logger.error(f"disconnect websocket failed: {str(e)}")
 
     # def send_data_to_client(self, data: json):
     #     if self.active_connection:

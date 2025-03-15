@@ -24,6 +24,7 @@ class SerialCommunication:
 
     def open_connection(self) -> bool:
         """打开串口连接"""
+        logger.debug("open connection")
         try:
             # 设置串口通信参数
             self.serial_conn.port = self.serial_parameters.port
@@ -41,16 +42,18 @@ class SerialCommunication:
 
             # 打开串口连接
             self.serial_conn.open()
+            logger.info(f"open serial successfully: {self.serial_parameters.port}")
             return self.serial_conn.is_open
         
         except serial.SerialException as e:
-            logger.error(f"open connection failed: {self.serial_parameters.port}: {str(e)}")
+            logger.error(f"failed to open serial : {self.serial_parameters.port}: {str(e)}")
             return False
 
     def close_connection(self):
         """关闭串口连接"""
         if self.serial_conn and self.serial_conn.is_open:
             self.serial_conn.close()
+            logger.info(f"close connection successfully: {self.serial_parameters.port}")
             self.serial_conn = None
 
     def send_data(self, data: str) -> bool:
@@ -86,40 +89,42 @@ class SerialCommunication:
         """
         if not self.serial_conn or not self.serial_conn.is_open:
             logger.warning("receive data filed: serial don't connect")
-            raise serial.SerialException("Serial port not connected")
+            raise serial.SerialException("serial port not connected")
         try:
             # 直接读取指定长度的数据
             data = self.serial_conn.read(data_length)
             
             # 只有当读取的数据长度等于请求长度时才返回数据
             if len(data) == data_length:
-                logger.debug(f"Received {len(data)} bytes")
+                logger.debug(f"recv {len(data)} bytes")
                 return data
             else:
-                logger.warning(f"Incomplete data received: {len(data)}/{data_length} bytes")
+                logger.warning(f"incomplete data received: {len(data)}/{data_length} bytes")
                 return None
                 
         except serial.SerialException as e:
-            logger.error(f"Read error: {str(e)}")
+            logger.error(f"read error: {str(e)}")
+            raise
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
+            logger.error(f"unexpected error: {str(e)}")
+            raise
             
 
     def clean_data(self) -> bytes:
         """读取所有可用数据"""
         if not self.serial_conn or not self.serial_conn.is_open:
             logger.warning("read all data filed: serial don't connect")
-            raise serial.SerialException("Serial port not connected")
+            raise serial.SerialException("serial port not connected")
 
         try:
             # 读取所有可用数据
             data = self.serial_conn.read_all()
             return data
         except serial.SerialException as e:
-            logger.error(f"Read error: {str(e)}")
+            logger.error(f"read error: {str(e)}")
             return None
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
+            logger.error(f"unexpected error: {str(e)}")
             return None
 
     def is_connected(self) -> bool:
@@ -130,7 +135,7 @@ class SerialCommunication:
 def get_ports():
     port_data = serial.tools.list_ports_windows.comports()
     for port, desc, hwid in sorted(port_data):
-        logger.info(f"Port:{port}, Desc:{desc}, Hwid:{hwid}")
+        logger.info(f"port:{port}, desc:{desc}, hwid:{hwid}")
 
     connnected_ports = [{"Port":port, "Desc":desc} for (port, desc, hwid) in sorted(port_data)]
     logger.info(f"connnected ports: {str(connnected_ports)}")

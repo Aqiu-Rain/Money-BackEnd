@@ -12,7 +12,7 @@ DATA_STORE_DIR = os.path.join(USER_HOME, 'money_data')
 # 定义所有配置数据
 class Settings:
     class APP:
-        APP_TITLE: str = 'Alumnus'
+        APP_TITLE: str = 'Cash Management SW_GRACETEK'
         APP_VERSION: str = '1.0.0'
         APP_DESCRIPTION: str = '[Money] 点钞数据记录.'
         BACKEND_SERVER: str = 'http://127.0.0.1:8000'

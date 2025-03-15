@@ -27,6 +27,10 @@ message_queue = Queue()
 # 定义常量
 MSG_LENGTH = 1650
 
+recv_data_count = 0
+push_data_count = 0
+save_data_count = 0
+
 # 定义串口控制器类
 class SerialController:
     '''
@@ -61,6 +65,7 @@ class SerialController:
 
     # 打开串口
     def open_connection(self) -> bool:
+        logger.debug("open connection")
         if not self.serial_communication.is_connected():
             return self.serial_communication.open_connection()
         
@@ -71,23 +76,39 @@ class SerialController:
         
     # 数据接收及入库
     def recv_and_save_data(self):
+        logger.info("start recv and save data")
+        global recv_data_count, push_data_count, save_data_count
         try:
             while True:
+                if not self.serial_communication:
+                    logger.warning("serial communication object is None")
+                    break
+                
                 # 接收数据
                 if not self.recv_data():
                     logger.warning(f"recv data failed: data is not correct")
                     continue
+                else:
+                    recv_data_count += 1
+                    logger.info(f"recv data count: {recv_data_count}")
 
                 # 推送数据
                 if not self.push_data():
                     logger.warning(f"push data failed: data is not correct")
                     continue
+                else:
+                    push_data_count += 1
+                    logger.info(f"push data count: {push_data_count}")
 
                 # 数据入库
                 if not self.save_data():
                     logger.warning(f"save data failed: data is not correct")
                     logger.warning(f"data is {self.message}")
                     continue
+                else:
+                    save_data_count += 1
+                    logger.info(f"save data count: {save_data_count}")
+
         except Exception as e:
             msg = f"recv data failed: {str(e)}"
             logger.error(msg)
@@ -271,7 +292,7 @@ class SerialController:
         return True
 
     # 推送错误提示信息
-    def push_error(self, msg: str, type: str = "notification"):
+    def push_error(self, msg: str, type: str = "warning"):
         message = {
             "type": type,
             "data": msg
