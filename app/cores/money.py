@@ -33,7 +33,7 @@ def searchMoney(data: SearchSchema, db: Session):
     print(start_time)
     if not data.date_range:
         # 查找Result.sno包含data.q 的所有结果
-        items = db.query(Result).filter(func.lower(Result.sno).like(f'%{data.q}%')).all()
+        items = db.query(Result).filter(Result.sno.like(f'%{data.q}%')).all()
 
         end_time = time.time()
         print(end_time)

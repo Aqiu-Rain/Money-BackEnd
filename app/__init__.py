@@ -10,7 +10,7 @@ from loguru import logger
 # from app.apis import router
 from app.models import Config
 from app.middlewares import add_cors_middleware
-from app.settings import Settings, load_app_settings, DATA_STORE_DIR
+from app.settings import Settings, load_app_settings, DB_STORE_DIR, LOG_STORE_DIR
 from app.extensions import generate_tables, SessionLocal
 
 
@@ -80,5 +80,7 @@ def register_databases():
 
 
 def init_dirs():
-    if not os.path.exists(DATA_STORE_DIR):
-        os.makedirs(DATA_STORE_DIR, exist_ok=True)
+    if not os.path.exists(DB_STORE_DIR):
+        os.makedirs(DB_STORE_DIR, exist_ok=True)
+    if not os.path.exists(LOG_STORE_DIR):
+        os.makedirs(LOG_STORE_DIR, exist_ok=True)

@@ -6,7 +6,8 @@ from typing import List
 # 定义全局变量
 USER_HOME = os.path.expanduser("~")
 STATIC_DIR = os.path.join(os.path.dirname(__file__), 'ui')
-DATA_STORE_DIR = os.path.join(USER_HOME, 'money_data')
+DB_STORE_DIR = os.path.join(USER_HOME, 'AppData', 'Roaming', 'GraceTek', 'DB')
+LOG_STORE_DIR = os.path.join(USER_HOME, 'AppData', 'Roaming', 'GraceTek', 'Log')
 
 
 # 定义所有配置数据
@@ -22,7 +23,7 @@ class Settings:
     class DB:
         AUTO_FLASH: bool = True
         PREFIX: str = 'sqlite:///' if sys.platform.startswith('win') else 'sqlite:////'
-        DATABASE_URL: str = PREFIX + os.path.join(DATA_STORE_DIR, 'data.db')
+        DATABASE_URL: str = PREFIX + os.path.join(DB_STORE_DIR, 'database.db')
 
     class CORS_MIDDLEWARE:
         ALLOW_METHODS: List[str] = ["*"]
@@ -31,12 +32,12 @@ class Settings:
         ALLOW_CREDENTIALS: bool = True
 
     class LOGGING:
-        LEVEL: str = 'DEBUG'
+        LEVEL: str = 'INFO'
         FORMAT: str = '{time:YYYY-MM-DD HH:mm:ss} | {level} | {module}:{file}:{function}():{line} -> {message}'
         ENQUEUE: bool = True
         DIAGNOSE: bool = True
         TRACEBACK: bool = True
-        LOG_NAME: str = os.path.join(DATA_STORE_DIR, 'money.log')
+        LOG_NAME: str = os.path.join(LOG_STORE_DIR, 'log.log')
         RETENTION: int = 5
 
     class DATA_SOURCE:
