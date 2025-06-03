@@ -30,16 +30,41 @@ def deleteMoney(id: int, db: Session):
 def searchMoney(data: SearchSchema, db: Session):
     import time
     start_time = time.time()
-    print(start_time)
     if not data.date_range:
         # 查找Result.sno包含data.q 的所有结果
-        items = db.query(Result).filter(Result.sno.like(f'%{data.q}%')).all()
 
-        end_time = time.time()
-        print(end_time)
-        print(f'cost: {int(end_time) - int(start_time)}')
+        if data.code == "all":
+            items = db.query(Result).filter(Result.sno.like(f'%{data.q}%')).all()
+        else:
+            items = db.query(Result).filter(Result.sno.like(f'%{data.q}%'), Result.tf_flag==data.code).all()
 
-        return {"data": items, "total": len(items)}
+        pdf_data = [
+            {
+                'create_at': item.create_at,
+                'money_flag': item.money_flag,
+                'tf_flag': item.tf_flag,
+                'ver': item.ver,
+                'valuta': item.valuta,
+                'machine_number': item.machine_number,
+                'sno': item.sno,
+                'image_data': item.image_data,
+            } for item in items
+        ]
+
+        excel_data = [
+            {
+                'Data&Time': datetime.fromisoformat(str(item.create_at)).strftime('%Y-%m-%d %H:%M:%S'),
+                'Currency.': item.money_flag,
+                'Denom.': item.tf_flag,
+                'Version': item.ver,
+                'Code': item.valuta,
+                'Machine No.': item.machine_number,
+                'S.N.': item.sno,
+                'S.N. Image': item.image_data,
+            } for item in items
+        ]
+
+        return {"data": pdf_data, "excel_data": excel_data, "total": len(pdf_data)}
     else:
         logger.debug(data.date_range)
         start_date = datetime.strptime(data.date_range[0], '%Y-%m-%d %H:%M:%S')
@@ -47,15 +72,44 @@ def searchMoney(data: SearchSchema, db: Session):
         logger.debug(start_date)
         logger.debug(end_date)
 
-        items = db.query(Result).filter(
-            and_(Result.sno.like(f'%{data.q}%'), Result.create_at.between(start_date, end_date))
-        ).order_by(Result.id.desc()).all()
+        if data.code == "all":
+            items = db.query(Result).filter(
+                and_(Result.sno.like(f'%{data.q}%'), Result.create_at.between(start_date, end_date))
+            ).order_by(Result.id.desc()).all()
+        else:
+            items = db.query(Result).filter(
+                and_(Result.sno.like(f'%{data.q}%'), Result.create_at.between(start_date, end_date), Result.tf_flag==data.code)
+            ).order_by(Result.id.desc()).all()
 
         end_time = time.time()
 
         logger.debug(f'cost: {int(end_time) - int(start_time)}')
+        pdf_data = [
+            {
+                'create_at': item.create_at,
+                'money_flag': item.money_flag,
+                'tf_flag': item.tf_flag,
+                'ver': item.ver,
+                'valuta': item.valuta,
+                'machine_number': item.machine_number,
+                'sno': item.sno,
+                'image_data': item.image_data,
+            } for item in items
+        ]
+        excel_data = [
+            {
+                'Data&Time': datetime.fromisoformat(str(item.create_at)).strftime('%Y-%m-%d %H:%M:%S'),
+                'Currency.': item.money_flag,
+                'Denom.': item.tf_flag,
+                'Version': item.ver,
+                'Code': item.valuta,
+                'Machine No.': item.machine_number,
+                'S.N.': item.sno,
+                'S.N. Image': item.image_data,
+            } for item in items
+        ]
 
-        return {"data": items, "total": len(items)}
+        return {"data": pdf_data, "excel_data":excel_data, "total": len(pdf_data)}
 
 
 def deleteAllMoney(db: Session):
