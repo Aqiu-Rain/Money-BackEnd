@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 # 导入自定义库
 from app.extensions import get_rdbms
 from app.schemas.money import SearchSchema
-from app.cores.money import getMoneyPages, deleteMoney, deleteAllMoney, searchMoney
+from app.cores.money import getMoneyPages, deleteMoney, deleteAllMoney, searchMoney, exportMoney
 
 # 定义全局变量
 router = APIRouter()
@@ -29,3 +29,8 @@ def delete_money(id: int, db: Session = Depends(get_rdbms)):
 @router.delete('/delete/all', status_code=200, description='删除所有点钞记录')
 def delete_money(db: Session = Depends(get_rdbms)):
     return deleteAllMoney(db)
+
+
+@router.post('/export', status_code=200, description='导出搜索出的点钞记录')
+def export(data:SearchSchema, db: Session = Depends(get_rdbms)):
+    return exportMoney(data, db)

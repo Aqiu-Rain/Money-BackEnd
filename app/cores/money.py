@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models import Result
 from app.schemas.money import SearchSchema
 from app.responses import ResponseException
+from app.utils.excel_service import export_to_excel
 
 
 def getMoneyPages(skip: int, limit: int, db: Session):
@@ -108,7 +109,6 @@ def searchMoney(data: SearchSchema, db: Session):
                 'S.N. Image': item.image_data,
             } for item in items
         ]
-
         return {"data": pdf_data, "excel_data":excel_data, "total": len(pdf_data)}
 
 
@@ -118,3 +118,13 @@ def deleteAllMoney(db: Session):
     db.commit()
 
     return {'detail': '删除成功'}
+
+
+def exportMoney(data: SearchSchema, db: Session):
+    result = searchMoney(data, db)
+    total = result['total']
+    excel_data = result['excel_data']
+    logger.info(f"total of searched money: {total}")
+    file_path = export_to_excel(excel_data, 'money_test')
+    logger.info(f"file path: {file_path}")
+    return {'detail': 'Export Successfully', 'file_path': file_path}
