@@ -56,9 +56,9 @@ def searchMoney(data: SearchSchema, db: Session):
             {
                 'Data&Time': datetime.fromisoformat(str(item.create_at)).strftime('%Y-%m-%d %H:%M:%S'),
                 'Currency.': item.money_flag,
-                'Denom.': item.tf_flag,
+                'Denom.': item.valuta,
                 'Version': item.ver,
-                'Code': item.valuta,
+                'Code': item.tf_flag,
                 'Machine No.': item.machine_number,
                 'S.N.': item.sno,
                 'S.N. Image': item.image_data,
@@ -101,9 +101,9 @@ def searchMoney(data: SearchSchema, db: Session):
             {
                 'Data&Time': datetime.fromisoformat(str(item.create_at)).strftime('%Y-%m-%d %H:%M:%S'),
                 'Currency.': item.money_flag,
-                'Denom.': item.tf_flag,
+                'Denom.': item.valuta,
                 'Version': item.ver,
-                'Code': item.valuta,
+                'Code': item.tf_flag,
                 'Machine No.': item.machine_number,
                 'S.N.': item.sno,
                 'S.N. Image': item.image_data,
